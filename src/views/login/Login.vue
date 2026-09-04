@@ -31,6 +31,10 @@ function handleLogin() {
     }
   }, 600)
 }
+
+function goCandidate() {
+  router.push('/c/login')
+}
 </script>
 
 <template>
@@ -99,6 +103,18 @@ function handleLogin() {
           <n-button quirk circle>飞</n-button>
         </n-space>
         <div class="login-tip">演示账号：linshuhao@yuntu.com / 任意密码</div>
+
+        <n-divider style="margin: 16px 0">
+          <span class="divider-text">身份切换</span>
+        </n-divider>
+        <div class="candidate-entry" @click="goCandidate">
+          <span class="ce-icon">🙂</span>
+          <div class="ce-body">
+            <div class="ce-title">我是求职者</div>
+            <div class="ce-desc">进入候选人端，练习模拟面试</div>
+          </div>
+          <span class="ce-arrow">→</span>
+        </div>
       </n-card>
     </div>
   </div>
@@ -156,6 +172,21 @@ function handleLogin() {
 .card-desc { font-size: 13px; color: #86909c; margin-top: 4px; }
 .login-options { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
 .login-tip { text-align: center; font-size: 12px; color: #c0c4cc; margin-top: 16px; }
+.divider-text { font-size: 12px; color: #c0c4cc; }
+.candidate-entry {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  background: linear-gradient(135deg, #f5f3ff, #ede9fe); border-radius: 10px;
+  cursor: pointer; transition: all .2s; border: 1px solid #ddd6fe;
+}
+.candidate-entry:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(124,58,237,.18); border-color: #c4b5fd; }
+.ce-icon {
+  width: 40px; height: 40px; border-radius: 10px; background: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+}
+.ce-body { flex: 1; }
+.ce-title { font-size: 14px; font-weight: 600; color: #4c1d95; }
+.ce-desc { font-size: 12px; color: #7c3aed; margin-top: 2px; }
+.ce-arrow { color: #7c3aed; font-size: 18px; font-weight: 600; }
 @media (max-width: 900px) {
   .login-bg-left { display: none; }
 }
