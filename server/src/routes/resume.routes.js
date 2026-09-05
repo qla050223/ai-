@@ -131,18 +131,20 @@ router.post('/c/resumes/:id/optimize', authCandidate, async (req, res) => {
   )
   if (!rows.length) return res.status(404).json({ msg: '简历不存在' })
   const resume = mapResume(rows[0])
-  const [canRows] = await pool.execute('SELECT name, intention FROM candidates WHERE id = ?', [req.candidateId])
+  const [canRows] = await pool.execute('SELECT name, phone, email, intention FROM candidates WHERE id = ?', [req.candidateId])
   let intention = {}
   const raw = canRows[0]?.intention
   if (raw) intention = typeof raw === 'string' ? JSON.parse(raw) : raw
   const ctx = {
     name: canRows[0]?.name,
+    phone: canRows[0]?.phone,
+    email: canRows[0]?.email,
     position: intention.position,
     workYears: intention.workYears
   }
   await new Promise(r => setTimeout(r, 1200))
-  const sections = optimizeResume(resume, ctx)
-  res.json({ sections })
+  const { sections, fullResume } = optimizeResume(resume, ctx)
+  res.json({ sections, fullResume })
 })
 
 export default router

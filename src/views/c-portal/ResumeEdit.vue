@@ -24,6 +24,10 @@ const appliedSet = ref(new Set()) // 已应用优化的段落 index
 // 流式输出：每段渲染进度 0~1
 const sectionProgress = ref([]) // [{ idx, optimizedText: '' }]
 const activeStreamTimer = ref(null)
+// 优化后的完整简历（Markdown）+ 结果视图切换
+const fullResume = ref('')
+const activeTab = ref('sections') // sections | full
+const copied = ref(false)
 
 async function startOptimize() {
   if (optimizing.value) return
@@ -32,12 +36,15 @@ async function startOptimize() {
   appliedSet.value = new Set()
   sectionProgress.value = []
   onlineFlow.value = null
+  fullResume.value = ''
+  activeTab.value = 'sections'
   try {
-    // 调后端 AI 改简历接口
+    // 调后端 AI 改简历接口（返回分段建议 + 完整简历）
     const data = await api.post(`/c/resumes/${selectedId.value}/optimize`, {})
     onlineFlow.value = data.sections || []
+    fullResume.value = data.fullResume || ''
   } catch {
-    // 后端不可用 → mock 兜底
+    // 后端不可用 → mock 兜底（mock 仅含分段建议，无完整简历）
     onlineFlow.value = resumeOptimizeFlow[selectedId.value] || []
   }
   fetching.value = false
@@ -53,6 +60,38 @@ function switchResume() {
   onlineFlow.value = null
   sectionProgress.value = []
   appliedSet.value = new Set()
+  fullResume.value = ''
+  activeTab.value = 'sections'
+}
+
+// 复制完整简历
+async function copyFull() {
+  if (!fullResume.value) return
+  try {
+    await navigator.clipboard.writeText(fullResume.value)
+    copied.value = true
+    setTimeout(() => (copied.value = false), 1800)
+  } catch {
+    // 兜底：选中文本
+    const range = document.createRange()
+    range.selectNode(document.querySelector('.fr-pre'))
+    window.getSelection()?.removeAllRanges()
+    window.getSelection()?.addRange(range)
+  }
+}
+
+// 下载完整简历为 .md 文件
+function downloadFull() {
+  if (!fullResume.value) return
+  const blob = new Blob([fullResume.value], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${auth.user?.name || '我的'}-AI优化简历.md`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 function streamNext(idx) {
@@ -221,51 +260,86 @@ async function onFileChange(e) {
         <p>AI 正在解析简历内容，生成分段优化建议...</p>
       </div>
 
-      <!-- 分段优化卡片 -->
-      <div v-else-if="sectionProgress.length" class="sections">
-        <div v-for="(s, i) in flow" :key="i" class="sec-card" :class="{ applied: appliedSet.has(i), active: optimizing && isStreamed(i) === false && sectionProgress[i]?.optimizedText }">
-          <div class="sec-card-head">
-            <div class="sec-num">{{ i + 1 }}</div>
-            <div class="sec-section">{{ s.section }}</div>
-            <span v-if="appliedSet.has(i)" class="sec-badge applied">已应用</span>
-            <span v-else-if="isStreamed(i)" class="sec-badge ready">可应用</span>
-            <span v-else-if="sectionProgress[i]?.optimizedText" class="sec-badge streaming">生成中</span>
-            <span v-else class="sec-badge pending">待生成</span>
-          </div>
+      <!-- 结果区：Tab 切换 -->
+      <div v-else-if="sectionProgress.length" class="result-wrap">
+        <div class="result-tabs">
+          <button class="rt-tab" :class="{ on: activeTab === 'sections' }" @click="activeTab = 'sections'">
+            📝 分段优化建议 <em>{{ flow.length }}</em>
+          </button>
+          <button class="rt-tab" :class="{ on: activeTab === 'full' }" @click="activeTab = 'full'">
+            📄 优化后完整简历
+          </button>
+        </div>
 
-          <div class="sec-compare">
-            <!-- 原文 -->
-            <div class="sec-col original">
-              <div class="col-label">原文</div>
-              <pre class="col-pre">{{ s.original }}</pre>
+        <!-- ===== 视图一：分段优化卡片 ===== -->
+        <div v-if="activeTab === 'sections'" class="sections">
+          <div v-for="(s, i) in flow" :key="i" class="sec-card" :class="{ applied: appliedSet.has(i), active: optimizing && isStreamed(i) === false && sectionProgress[i]?.optimizedText }">
+            <div class="sec-card-head">
+              <div class="sec-num">{{ i + 1 }}</div>
+              <div class="sec-section">{{ s.section }}</div>
+              <span v-if="appliedSet.has(i)" class="sec-badge applied">已应用</span>
+              <span v-else-if="isStreamed(i)" class="sec-badge ready">可应用</span>
+              <span v-else-if="sectionProgress[i]?.optimizedText" class="sec-badge streaming">生成中</span>
+              <span v-else class="sec-badge pending">待生成</span>
             </div>
-            <!-- 优化后 -->
-            <div class="sec-col optimized">
-              <div class="col-label">AI 优化后</div>
-              <pre class="col-pre">{{ sectionProgress[i]?.optimizedText || '' }}<span v-if="optimizing && sectionProgress[i]?.optimizedText && !isStreamed(i)" class="cursor">▋</span></pre>
+
+            <div class="sec-compare">
+              <!-- 原文 -->
+              <div class="sec-col original">
+                <div class="col-label">原文</div>
+                <pre class="col-pre">{{ s.original }}</pre>
+              </div>
+              <!-- 优化后 -->
+              <div class="sec-col optimized">
+                <div class="col-label">AI 优化后</div>
+                <pre class="col-pre">{{ sectionProgress[i]?.optimizedText || '' }}<span v-if="optimizing && sectionProgress[i]?.optimizedText && !isStreamed(i)" class="cursor">▋</span></pre>
+              </div>
+            </div>
+
+            <!-- 修改理由 -->
+            <div v-if="isStreamed(i)" class="sec-rationale">
+              <span class="rr-label">💡 修改理由</span>
+              <p>{{ s.rationale }}</p>
+            </div>
+
+            <!-- 加分技巧 -->
+            <div v-if="isStreamed(i) && s.tips && s.tips.length" class="sec-tips">
+              <span class="rr-label">✨ 加分技巧</span>
+              <ul>
+                <li v-for="(t, ti) in s.tips" :key="ti">{{ t }}</li>
+              </ul>
+            </div>
+
+            <!-- 应用按钮 -->
+            <div v-if="isStreamed(i) && !appliedSet.has(i)" class="sec-foot">
+              <button class="re-btn small primary" @click="applySection(i)">应用此段优化</button>
             </div>
           </div>
 
-          <!-- 修改理由 -->
-          <div v-if="isStreamed(i)" class="sec-rationale">
-            <span class="rr-label">💡 修改理由</span>
-            <p>{{ s.rationale }}</p>
-          </div>
-
-          <!-- 应用按钮 -->
-          <div v-if="isStreamed(i) && !appliedSet.has(i)" class="sec-foot">
-            <button class="re-btn small primary" @click="applySection(i)">应用此段优化</button>
+          <!-- 完成提示 -->
+          <div v-if="!optimizing && appliedSet.size === flow.length" class="done-tip">
+            <span class="dt-icon">✅</span>
+            <div>
+              <div class="dt-title">全部优化已应用！</div>
+              <div class="dt-sub">可切换到「优化后完整简历」查看成稿，或去测评看得分提升。</div>
+            </div>
+            <button class="re-btn primary" @click="activeTab = 'full'">查看完整简历 →</button>
           </div>
         </div>
 
-        <!-- 完成提示 -->
-        <div v-if="!optimizing && sectionProgress.length && appliedSet.size === flow.length" class="done-tip">
-          <span class="dt-icon">✅</span>
-          <div>
-            <div class="dt-title">全部优化已应用！</div>
-            <div class="dt-sub">建议立即去简历测评，看看新简历的得分提升了多少。</div>
+        <!-- ===== 视图二：优化后完整简历 ===== -->
+        <div v-else class="full-resume">
+          <div class="fr-toolbar">
+            <span class="fr-hint">📌 【】内为占位符，请替换为你的真实信息后再投递</span>
+            <div class="fr-actions">
+              <button class="re-btn small ghost" @click="copyFull">{{ copied ? '✅ 已复制' : '📋 一键复制' }}</button>
+              <button class="re-btn small primary" @click="downloadFull">⬇️ 下载简历 (.md)</button>
+            </div>
           </div>
-          <button class="re-btn primary" @click="goAssess">立即测评 →</button>
+          <pre v-if="fullResume" class="fr-pre">{{ fullResume }}</pre>
+          <div v-else class="fr-empty">
+            完整简历生成需要连接后端服务。<br />请确认后端已启动（server 目录运行 npm start）后重新点击「开始 AI 优化」。
+          </div>
         </div>
       </div>
     </template>
@@ -342,6 +416,41 @@ async function onFileChange(e) {
 @keyframes ol-spin { to { transform: rotate(360deg); } }
 .optimizing-loading p { margin: 0; font-size: 14px; color: #6b7280; }
 .sections { display: flex; flex-direction: column; gap: 16px; }
+
+/* 结果 Tab */
+.result-tabs { display: flex; gap: 8px; margin-bottom: 4px; }
+.rt-tab {
+  padding: 9px 18px; border: 1px solid #e5e7eb; background: #fff; border-radius: 10px 10px 0 0;
+  font-size: 14px; font-weight: 600; color: #6b7280; cursor: pointer; transition: all .2s;
+  border-bottom: 2px solid transparent;
+}
+.rt-tab em { font-style: normal; font-size: 12px; background: #f3f4f6; color: #6b7280; border-radius: 10px; padding: 1px 8px; margin-left: 4px; }
+.rt-tab.on { color: #7c3aed; border-color: #e9d5ff; border-bottom-color: #7c3aed; background: #faf5ff; }
+.rt-tab.on em { background: #7c3aed; color: #fff; }
+
+/* 加分技巧 */
+.sec-tips {
+  margin-top: 12px; padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a;
+  border-radius: 10px;
+}
+.sec-tips .rr-label { color: #b45309; }
+.sec-tips ul { margin: 8px 0 0; padding-left: 18px; }
+.sec-tips li { font-size: 13px; color: #78350f; line-height: 1.8; }
+
+/* 完整简历视图 */
+.full-resume { background: #fff; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.05); overflow: hidden; }
+.fr-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 18px; background: #f9fafb; border-bottom: 1px solid #f3f4f6;
+}
+.fr-hint { font-size: 12px; color: #b45309; }
+.fr-actions { display: flex; gap: 8px; }
+.fr-pre {
+  margin: 0; padding: 24px 28px; font-family: "Consolas", "Microsoft YaHei", monospace;
+  font-size: 13px; line-height: 1.9; color: #1f2937; white-space: pre-wrap; word-break: break-word;
+  max-height: 70vh; overflow-y: auto;
+}
+.fr-empty { padding: 48px 24px; text-align: center; color: #9ca3af; font-size: 14px; line-height: 2; }
 .sec-card {
   background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.04);
   border: 1px solid #f3f4f6; transition: all .2s;
