@@ -76,13 +76,18 @@ const routes = [
   {
     path: '/c',
     component: () => import('@/layouts/CandidateLayout.vue'),
-    redirect: '/c/mock',
+    redirect: '/c/workbench',
     children: [
-      // 模拟面试（主动入口）
-      { path: 'mock', name: 'MockHome', component: () => import('@/views/c-portal/MockHome.vue'), meta: { title: '模拟面试', portal: 'candidate' } },
+      // 工作台首页（默认入口，聚合三大 AI 功能）
+      { path: 'workbench', name: 'Workbench', component: () => import('@/views/c-portal/Workbench.vue'), meta: { title: '工作台', portal: 'candidate' } },
+      // 模拟面试（主动入口，即 AI 面试）
+      { path: 'mock', name: 'MockHome', component: () => import('@/views/c-portal/MockHome.vue'), meta: { title: 'AI 面试', portal: 'candidate' } },
       { path: 'mock/config/:positionId', name: 'MockConfig', component: () => import('@/views/c-portal/MockConfig.vue'), meta: { title: '练习配置', portal: 'candidate' } },
       { path: 'mock/room/:interviewId', name: 'MockRoom', component: () => import('@/views/c-portal/MockRoom.vue'), meta: { title: 'AI 模拟面试', portal: 'candidate' } },
       { path: 'mock/result/:interviewId', name: 'MockResult', component: () => import('@/views/c-portal/MockResult.vue'), meta: { title: '能力反馈', portal: 'candidate' } },
+      // AI 帮你改简历（含改简历 + 简历测评）
+      { path: 'resume/edit', name: 'ResumeEdit', component: () => import('@/views/c-portal/ResumeEdit.vue'), meta: { title: 'AI 改简历', portal: 'candidate' } },
+      { path: 'resume/assess', name: 'ResumeAssess', component: () => import('@/views/c-portal/ResumeAssess.vue'), meta: { title: '简历测评', portal: 'candidate' } },
       // 我的面试
       { path: 'my', name: 'MyInterviews', component: () => import('@/views/c-portal/MyInterviews.vue'), meta: { title: '我的面试', portal: 'candidate' } },
       { path: 'my/:id', name: 'InterviewReview', component: () => import('@/views/c-portal/InterviewReview.vue'), meta: { title: '面试记录', portal: 'candidate' } },
@@ -110,7 +115,7 @@ router.beforeEach((to, from, next) => {
     // 已登录访问登录页则跳转对应首页
     if (to.name === 'CandidateLogin' || to.name === 'CandidateRegister') {
       const cAuth = useCandidateAuthStore()
-      if (cAuth.isLoggedIn) return next('/c/mock')
+      if (cAuth.isLoggedIn) return next('/c/workbench')
     }
     return next()
   }

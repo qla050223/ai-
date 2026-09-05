@@ -19,10 +19,10 @@ async function handleRegister() {
   }
   loading.value = true
   await new Promise(r => setTimeout(r, 800))
-  const res = auth.register(form)
+  const res = await auth.register(form)
   loading.value = false
   if (res.ok) {
-    router.push('/c/mock')
+    router.push('/c/workbench')
   } else {
     errorMsg.value = res.msg
   }

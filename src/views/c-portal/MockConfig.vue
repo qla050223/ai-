@@ -99,9 +99,9 @@ async function generateBank() {
   generated.value = true
 }
 
-function startInterview() {
-  // 创建模拟练习记录
-  const iv = dataStore.addMockInterview({
+async function startInterview() {
+  // 创建模拟练习记录（占位草稿，仅本地，交卷时才写库）
+  const iv = await dataStore.addMockInterview({
     typeId: position.value.id,
     positionTitle: position.value.title,
     duration: config.duration,
@@ -111,7 +111,7 @@ function startInterview() {
     questionCount: questions.value.length,
     summary: '',
     shortboards: []
-  })
+  }, { persist: false })
   router.push(`/c/mock/room/${iv.id}`)
 }
 

@@ -1,14 +1,23 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter, useRoute, RouterView } from 'vue-router'
-import { useCandidateAuthStore } from '@/stores/candidate'
+import { useCandidateAuthStore, useCandidateDataStore } from '@/stores/candidate'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useCandidateAuthStore()
+const dataStore = useCandidateDataStore()
+
+// 进入求职者端后，向后端同步用户/简历/岗位/面试记录（失败自动回退 mock）
+onMounted(async () => {
+  await auth.hydrateMe()
+  dataStore.hydrate()
+})
 
 const navItems = [
-  { path: '/c/mock', label: '模拟面试', icon: '🎯' },
+  { path: '/c/workbench', label: '工作台', icon: '🏠' },
+  { path: '/c/mock', label: 'AI 面试', icon: '🎯' },
+  { path: '/c/resume/edit', label: 'AI 改简历', icon: '✍️', prefix: '/c/resume' },
   { path: '/c/my', label: '我的面试', icon: '📋' },
   { path: '/c/ability', label: '能力档案', icon: '📊' },
   { path: '/c/settings', label: '设置', icon: '⚙️' }
@@ -16,7 +25,10 @@ const navItems = [
 
 const activePath = computed(() => {
   const p = route.path
-  return navItems.find(n => p.startsWith(n.path))?.path || '/c/mock'
+  return navItems.find(n => {
+    const key = n.prefix || n.path
+    return p === key || p.startsWith(key + '/') || p === n.path
+  })?.path || '/c/workbench'
 })
 
 function go(path) {
@@ -33,7 +45,7 @@ function logout() {
   <div class="c-layout">
     <header class="c-header">
       <div class="c-header-inner">
-        <div class="c-brand" @click="go('/c/mock')">
+        <div class="c-brand" @click="go('/c/workbench')">
           <span class="c-brand-mark">AI</span>
           <span class="c-brand-text">面试助手 · 候选人端</span>
         </div>

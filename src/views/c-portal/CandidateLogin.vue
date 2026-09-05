@@ -15,10 +15,10 @@ async function handleLogin() {
   errorMsg.value = ''
   loading.value = true
   await new Promise(r => setTimeout(r, 600))
-  const res = auth.login(form)
+  const res = await auth.login(form)
   loading.value = false
   if (res.ok) {
-    const redirect = route.query.redirect || '/c/mock'
+    const redirect = route.query.redirect || '/c/workbench'
     router.push(redirect)
   } else {
     errorMsg.value = res.msg
@@ -83,7 +83,7 @@ function goEnterprise() {
       <div class="c-auth-demo">
         <div class="c-auth-demo-title">演示账号</div>
         <div class="c-auth-demo-row"><span>邮箱</span><code>luxinghe@email.com</code></div>
-        <div class="c-auth-demo-row"><span>密码</span><code>任意</code></div>
+        <div class="c-auth-demo-row"><span>密码</span><code>demo1234</code></div>
       </div>
     </div>
   </div>

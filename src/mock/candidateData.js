@@ -338,3 +338,91 @@ export const dimensionOptions = [
   { label: '学习能力', value: '学习能力' },
   { label: '文化匹配', value: '文化匹配' }
 ]
+
+// ==================== 简历测评 Mock ====================
+// 简历测评维度雷达图数据（按简历 id 缓存结果）
+export const resumeAssessResults = {
+  rs_001: {
+    overallScore: 76,
+    radar: { 匹配度: 82, 完整性: 70, 结构性: 78, 亮点度: 68, STAR: 64, 关键词: 85 },
+    dimensions: [
+      { name: '岗位匹配度', score: 82, comment: '技能栈与高级前端岗位高度匹配，Vue3/性能优化等关键词覆盖到位。' },
+      { name: '内容完整性', score: 70, comment: '缺少近期培训、开源贡献等板块，建议补充 GitHub 链接与个人项目。' },
+      { name: '结构清晰度', score: 78, comment: '模块划分合理，但"项目经验"缺少职责-动作-结果的递进层次。' },
+      { name: '亮点呈现', score: 68, comment: '量化结果偏少，建议把"主导""优化"等动作后补具体数字与影响。' },
+      { name: 'STAR 完整度', score: 64, comment: '项目描述多为概述，未拆分情境-任务-行动-结果，复盘深度不足。' },
+      { name: '关键词命中', score: 85, comment: '响应式、Proxy、性能优化等 ATS 关键词命中良好。' }
+    ],
+    keywords: { hit: ['Vue3', '性能优化', '响应式', 'TypeScript', '可视化'], miss: ['CI/CD', 'Monorepo', '微前端', '工程化体系'] },
+    summary: '整体质量良好，岗位匹配度高，但亮点呈现与 STAR 结构是主要短板，建议优先打磨项目经验的量化表达。',
+    suggestions: [
+      { type: '结构', text: '项目经验统一使用"背景 → 行动 → 结果"三段式，结果必须带数字。' },
+      { type: '亮点', text: '把云音乐可视化项目提到首位，补充首屏/帧率/包体积等具体指标。' },
+      { type: '关键词', text: '补充 CI/CD、Monorepo 等工程化关键词，提升 ATS 过筛率。' }
+    ]
+  },
+  rs_002: {
+    overallScore: 71,
+    radar: { 匹配度: 75, 完整性: 72, 结构性: 74, 亮点度: 66, STAR: 60, 关键词: 78 },
+    dimensions: [
+      { name: '岗位匹配度', score: 75, comment: '全栈方向匹配良好，前端深度略弱于后端。' },
+      { name: '内容完整性', score: 72, comment: '基础信息完整，建议补充技术博客或开源项目链接。' },
+      { name: '结构清晰度', score: 74, comment: '前后端分离清晰，但项目时间线略凌乱。' },
+      { name: '亮点呈现', score: 66, comment: '从 0 搭建的故事有张力，但缺少用户量、QPS 等业务结果。' },
+      { name: 'STAR 完整度', score: 60, comment: '全栈项目描述偏流水账，未体现你的不可替代性。' },
+      { name: '关键词命中', score: 78, comment: 'Docker、MySQL 等命中良好，可补充 K8s、监控等关键词。' }
+    ],
+    keywords: { hit: ['Vue3', 'Node.js', 'Express', 'MySQL', 'Docker'], miss: ['K8s', '监控', '高并发', '微服务'] },
+    summary: '全栈视野是优势，但项目复盘深度与量化表达是主要短板，建议强化业务结果与架构决策的呈现。',
+    suggestions: [
+      { type: '结构', text: 'B 端平台项目按"业务背景 → 架构决策 → 上线结果"重新组织。' },
+      { type: '亮点', text: '补充 DAU、接口响应时间、迭代提速等可量化指标。' },
+      { type: '关键词', text: '补 K8s、Prometheus 等关键词，提升中高级岗位过筛率。' }
+    ]
+  }
+}
+
+// ==================== AI 帮你改简历 Mock ====================
+// AI 改简历：分段优化建议流（流式输出模拟）
+export const resumeOptimizeFlow = {
+  rs_001: [
+    {
+      section: '个人信息 / 摘要',
+      original: '陆星河 / 4 年前端 / 浙大硕士',
+      optimized: '陆星河｜高级前端工程师｜4 年经验\n浙大计算机硕士 · 前端工程化 & 性能优化方向 · 累计服务 MAU 2000w+ 产品',
+      rationale: '将"摘要"升级为"定位 + 方向 + 量化背书"三段式，让 HR 6 秒内抓住你的核心竞争力。'
+    },
+    {
+      section: '项目经验① 云音乐播放器',
+      original: '主导音频可视化与性能优化',
+      optimized: '【云音乐播放器】前端负责人 · 2024.03–2025.06\n• 背景：DAU 800w 的播放器首屏 3.2s、滚动 FPS 28，影响留存。\n• 行动：① 用 Web Audio + Canvas 重构可视化，Worker 化计算；② 路由分包 + 图片懒加载，首屏体积 -42%。\n• 结果：首屏 3.2s → 1.1s，FPS 28 → 55，次留 +3.2%。',
+      rationale: '补全 STAR 结构，把模糊的"优化"落到具体动作 + 可量化结果，是高级岗最看重的表达。'
+    },
+    {
+      section: '技能栈',
+      original: 'Vue3 / TypeScript / Vite / Node.js / 可视化',
+      optimized: '• 前端：Vue3(响应式/Composition API) · TypeScript · Vite · Webpack\n• 性能：首屏优化 · 火焰图分析 · Worker · 长任务治理\n• 工程化：Monorepo(pnpm) · CI/CD · ESLint 自动化\n• 后端：Node.js · Express · MySQL',
+      rationale: '把技能按"领域 + 关键词"分组，并显式加入 CI/CD、Monorepo 等 ATS 高频词，提升机器过筛率。'
+    }
+  ],
+  rs_002: [
+    {
+      section: '个人信息 / 摘要',
+      original: '陆星河 / 全栈 / 浙大硕士',
+      optimized: '陆星河｜全栈工程师｜4 年经验\n浙大计算机硕士 · 前后端全链路 · 主导 B 端平台从 0 到 1 服务 200+ 内部用户',
+      rationale: '补充"全链路 + 从 0 到 1 + 用户量级"三段定位，让全栈价值一眼可见。'
+    },
+    {
+      section: '项目经验① B 端平台',
+      original: '从 0 搭建前后端架构',
+      optimized: '【内部 B 端平台】全栈负责人 · 2023.05–2024.02\n• 背景：旧系统迭代慢、接口响应 1.2s，影响 5 个业务方效率。\n• 行动：① 前端 Vue3 + Vite 工程化；② 后端 Node + Express 分层 + Redis 缓存；③ 统一 JSON Schema 规范。\n• 结果：接口响应 1.2s → 280ms，迭代周期 2 周 → 3 天，覆盖 5 个业务方 200+ 用户。',
+      rationale: '把"从 0 搭建"升级为完整 STAR，并补充响应时间、迭代周期等可量化指标。'
+    },
+    {
+      section: '技能栈',
+      original: 'Vue3 / Node.js / Express / MySQL / Docker',
+      optimized: '• 前端：Vue3 · TypeScript · Vite\n• 后端：Node.js · Express · MySQL · Redis\n• 运维：Docker · K8s · Prometheus · CI/CD\n• 全栈：JSON Schema 规范 · 接口契约 · 监控告警',
+      rationale: '补 K8s、Prometheus 等中高级岗位关键词，强化"全栈 + 运维"复合能力。'
+    }
+  ]
+}

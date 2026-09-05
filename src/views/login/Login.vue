@@ -20,11 +20,11 @@ function handleLogin() {
     return
   }
   loading.value = true
-  setTimeout(() => {
-    const res = auth.login(form)
+  setTimeout(async () => {
+    const res = await auth.login(form)
     loading.value = false
     if (res.ok) {
-      message.success('登录成功')
+      message.success(res.offline ? '登录成功（演示模式：后端未连接）' : '登录成功')
       router.push('/dashboard')
     } else {
       message.error(res.msg || '登录失败')
@@ -102,7 +102,7 @@ function goCandidate() {
           <n-button quirk circle>钉</n-button>
           <n-button quirk circle>飞</n-button>
         </n-space>
-        <div class="login-tip">演示账号：linshuhao@yuntu.com / 任意密码</div>
+        <div class="login-tip">演示账号：linshuhao@yuntu.com / demo1234</div>
 
         <n-divider style="margin: 16px 0">
           <span class="divider-text">身份切换</span>

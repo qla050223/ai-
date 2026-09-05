@@ -12,6 +12,13 @@ export default defineConfig({
   server: {
     port: 5173,
     host: '0.0.0.0',
-    open: true
+    open: true,
+    proxy: {
+      // 后端接口代理到 Express（默认 3000 端口）
+      '/api': {
+        target: process.env.VITE_API_TARGET || 'http://localhost:3000',
+        changeOrigin: true
+      }
+    }
   }
 })

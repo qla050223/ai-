@@ -29,6 +29,9 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 
+# Uploaded resume files (runtime data)
+server/uploads/
+
 # OS
 .DS_Store
 Thumbs.db

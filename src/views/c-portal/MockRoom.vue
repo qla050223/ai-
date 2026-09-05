@@ -129,13 +129,13 @@ function finalizeAndGo() {
   router.push(`/c/mock/result/${interviewId}`)
 }
 
-function finalizeReport() {
+async function finalizeReport() {
   const radar = {
     专业技能: 82, 项目经验: 80, 逻辑思维: 75, 沟通表达: 72, 学习能力: 85, 文化匹配: 74
   }
   const answered = messages.value.filter(m => m.role === 'candidate').length
   const overall = Math.round(Object.values(radar).reduce((a,b)=>a+b,0) / Object.keys(radar).length)
-  dataStore.addMockInterview({
+  await dataStore.addMockInterview({
     id: interviewId, // 覆盖原记录
     typeId: interview.value?.typeId,
     positionTitle: interview.value?.positionTitle,
