@@ -1,12 +1,10 @@
-// ==================== 数据库行 → 前端结构 映射 ====================
-// 保持与前端 mock 数据完全一致的字段名（camelCase），前端 store 无需改 getter
+// ==================== 数据库行 → 前端结构 映射（共享） ====================
 function parseJson(v, fallback) {
   if (v == null) return fallback
   if (typeof v === 'object') return v
   try { return JSON.parse(v) } catch { return fallback }
 }
 
-// 简历行 → 前端 resume 结构
 export function mapResume(row) {
   return {
     id: row.id,
@@ -23,7 +21,6 @@ export function mapResume(row) {
   }
 }
 
-// 求职者行 → 前端 user 结构（含 resumes）
 export function mapCandidate(row, resumes = []) {
   return {
     id: row.id,
@@ -37,7 +34,6 @@ export function mapCandidate(row, resumes = []) {
   }
 }
 
-// 岗位行 → 前端 position 结构
 export function mapPosition(row) {
   return {
     id: row.id,
@@ -52,7 +48,6 @@ export function mapPosition(row) {
   }
 }
 
-// 面试记录行 → 前端 interview 结构
 export function mapInterview(row) {
   return {
     id: row.id,
@@ -71,7 +66,6 @@ export function mapInterview(row) {
   }
 }
 
-// 企业用户行 → 前端 user 结构
 export function mapOrgUser(row) {
   return {
     id: row.id,

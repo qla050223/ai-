@@ -6,7 +6,12 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "test": "node --test src/modules/**/*.test.js",
+    "test:auth": "node --test src/modules/auth/auth.test.js",
+    "test:position": "node --test src/modules/position/position.test.js",
+    "test:interview": "node --test src/modules/interview/interview.test.js",
+    "test:resume": "node --test src/modules/resume/resume.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -18,5 +23,8 @@
     "multer": "^2.3.0",
     "mysql2": "^3.11.0",
     "pdf-parse": "^2.4.5"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2"
   }
 }

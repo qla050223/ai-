@@ -1,10 +1,10 @@
 // ==================== Express 应用 ====================
 import express from 'express'
 import cors from 'cors'
-import authRoutes from './routes/auth.routes.js'
-import positionRoutes from './routes/position.routes.js'
-import interviewRoutes from './routes/interview.routes.js'
-import resumeRoutes from './routes/resume.routes.js'
+import authRoutes from './modules/auth/auth.routes.js'
+import positionRoutes from './modules/position/position.routes.js'
+import interviewRoutes from './modules/interview/interview.routes.js'
+import resumeRoutes from './modules/resume/resume.routes.js'
 
 const app = express()
 
