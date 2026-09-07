@@ -118,8 +118,9 @@ router.post('/c/resumes/:id/assess', authCandidate, async (req, res) => {
   )
   if (!rows.length) return res.status(404).json({ msg: '简历不存在' })
   const resume = mapResume(rows[0])
+  const position = req.body?.position || null
   await new Promise(r => setTimeout(r, 1200))
-  const result = assessResume(resume)
+  const result = assessResume(resume, position)
   res.json({ result })
 })
 

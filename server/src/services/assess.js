@@ -1,7 +1,18 @@
-// ==================== 简历测评服务（规则评分） ====================
-// 根据简历解析结果，按 6 个维度打分，输出与前端 mock 同构的测评报告
+// ==================== 简历测评服务（规则评分 + 职业匹配度） ====================
+// 根据简历解析结果，按 6 个维度打分，并计算与目标职业的匹配度
 
-// 目标岗位高频关键词池（ATS 过筛参考）
+// 各职业关键词池（用于计算职业匹配度）
+const POSITION_KEYWORDS = {
+  '高级前端工程师': ['Vue3', 'TypeScript', 'Vite', '性能优化', '工程化', 'React', '响应式', '微前端', 'Monorepo', 'Node.js'],
+  '后端开发工程师': ['Python', 'FastAPI', 'MySQL', 'Redis', '高并发', 'Java', 'Spring', 'Docker', 'K8s', '微服务'],
+  '产品经理': ['PRD', '用户研究', '数据分析', 'B 端产品', 'Axure', '需求分析', '原型设计', '竞品分析', '指标体系', 'A/B测试'],
+  '数据分析师': ['SQL', 'Python', '统计学', 'BI', 'Excel', '数据可视化', '指标体系', 'Tableau', 'Pandas', 'ETL'],
+  '全栈工程师': ['Vue3', 'Node.js', 'MySQL', 'Docker', 'CI/CD', 'React', 'Express', 'MongoDB', 'Redis', 'Nginx'],
+  'UI/UX 设计师': ['Figma', '交互设计', '设计系统', '用户研究', 'Sketch', '用户体验', '视觉设计', '原型设计', '动效', '可用性测试'],
+  '前端工程师': ['Vue3', 'TypeScript', 'Vite', '性能优化', '工程化', 'React', '响应式', 'JavaScript', 'CSS', 'HTML']
+}
+
+// 通用关键词兜底
 const TARGET_KEYWORDS = [
   'Vue3', 'TypeScript', 'Vite', '性能优化', '工程化', '响应式',
   'Node.js', 'MySQL', 'Docker', 'CI/CD', 'Monorepo', '微前端',
@@ -10,19 +21,44 @@ const TARGET_KEYWORDS = [
 
 const clamp = (n) => Math.max(40, Math.min(95, Math.round(n)))
 
-export function assessResume(resume) {
+// 计算职业匹配度
+function calcPositionMatch(skills, position) {
+  const pool = POSITION_KEYWORDS[position] || TARGET_KEYWORDS
+  const skillText = skills.join(' ')
+  const hit = pool.filter(k => skillText.includes(k))
+  const miss = pool.filter(k => !skillText.includes(k))
+  // 匹配度 = 命中数 / 总数 * 100，结合技能总数做加权
+  const ratio = hit.length / pool.length
+  const score = clamp(50 + ratio * 40 + Math.min(skills.length, 6) * 2)
+  const comment = score >= 80
+    ? `与「${position}」高度匹配，已覆盖 ${hit.length}/${pool.length} 个核心关键词。`
+    : score >= 60
+      ? `与「${position}」基本匹配，命中 ${hit.length}/${pool.length} 个关键词，建议补充 ${miss.slice(0, 3).join('、')}。`
+      : `与「${position}」匹配度偏低，仅命中 ${hit.length}/${pool.length} 个关键词，建议重点补充 ${miss.slice(0, 4).join('、')}。`
+  return { position, score, hit, miss: miss.slice(0, 6), comment }
+}
+
+export function assessResume(resume, position) {
   const parsed = resume.parsed || {}
   const skills = Array.isArray(parsed.skills) ? parsed.skills : []
   const projects = Array.isArray(parsed.projects) ? parsed.projects : []
 
-  // ---- 关键词命中 ----
+  // ---- 职业匹配度 ----
+  const positionMatch = position ? calcPositionMatch(skills, position) : null
+
+  // ---- 关键词命中（通用） ----
   const skillText = skills.join(' ')
-  const hit = TARGET_KEYWORDS.filter(k => skillText.includes(k))
-  const miss = TARGET_KEYWORDS.filter(k => !skillText.includes(k)).slice(0, 4)
+  const pool = POSITION_KEYWORDS[position] || TARGET_KEYWORDS
+  const hit = pool.filter(k => skillText.includes(k))
+  const miss = pool.filter(k => !skillText.includes(k)).slice(0, 4)
   const keywordScore = clamp(55 + hit.length * 6)
 
   // ---- 各维度打分 ----
-  const matchScore = clamp(50 + Math.min(skills.length, 8) * 4 + (parsed.workYears >= 3 ? 8 : 0))
+  // 岗位匹配度结合职业匹配度
+  const matchScore = positionMatch
+    ? clamp(positionMatch.score * 0.6 + (50 + Math.min(skills.length, 8) * 4) * 0.4)
+    : clamp(50 + Math.min(skills.length, 8) * 4 + (parsed.workYears >= 3 ? 8 : 0))
+
   const completeScore = clamp(
     45 + (parsed.education ? 12 : 0) + (projects.length >= 1 ? 10 : 0) +
     (skills.length >= 5 ? 12 : skills.length * 2) + (resume.phone ? 6 : 0)
@@ -49,7 +85,7 @@ export function assessResume(resume) {
       结构清晰度: score >= 80 ? '项目结构清晰，职责角色明确。' : score >= 60 ? '模块划分合理，项目经验可加强职责-动作-结果层次。' : '结构偏松散，建议按模块重新组织简历内容。',
       亮点呈现: score >= 80 ? '量化结果突出，个人贡献清晰。' : score >= 60 ? '有项目成果但量化不足，建议补充具体数字与影响。' : '缺少量化亮点，建议用数据呈现工作成果。',
       'STAR 完整度': score >= 80 ? '项目描述符合 STAR 结构，复盘有深度。' : score >= 60 ? '项目描述偏概述，建议拆分情境-任务-行动-结果。' : '未体现 STAR 结构，建议按背景-行动-结果重写项目。',
-      关键词命中: score >= 80 ? `已命中 ${hit.length} 个 ATS 高频关键词，过筛表现良好。` : score >= 60 ? `命中 ${hit.length} 个关键词，可补充工程化相关词汇。` : `关键词命中偏少（${hit.length} 个），ATS 过筛风险较高。`
+      关键词命中: score >= 80 ? `已命中 ${hit.length} 个核心关键词，过筛表现良好。` : score >= 60 ? `命中 ${hit.length} 个关键词，可补充工程化相关词汇。` : `关键词命中偏少（${hit.length} 个），过筛风险较高。`
     }
     return { name, score, comment: commentMap[name] }
   }
@@ -76,14 +112,16 @@ export function assessResume(resume) {
       '关键词命中': `补充 ${miss.slice(0, 3).join('、') || '工程化'} 等关键词，提升 ATS 过筛率。`,
       '内容完整性': '补充 GitHub、技术博客或开源项目链接，丰富简历板块。',
       '结构清晰度': '项目按"业务背景 → 架构决策 → 上线结果"重新组织。',
-      '岗位匹配度': '针对目标岗位 JD 调整技能排序与项目侧重。'
+      '岗位匹配度': positionMatch
+        ? `针对「${position}」JD 调整技能排序，补充 ${positionMatch.miss.slice(0, 3).join('、') || '相关'} 关键词。`
+        : '针对目标岗位 JD 调整技能排序与项目侧重。'
     }
     return { type: typeMap[d.name] || '优化', text: textMap[d.name] || '建议针对性优化该维度。' }
   })
 
-  const summary = `整体质量${overallScore >= 80 ? '优秀' : overallScore >= 70 ? '良好' : '有待提升'}：${dimensions[0].name.replace('命中', '')}表现较好，主要短板为「${weakest[0].name}」与「${weakest[1].name}」，建议优先打磨项目经验的量化表达与 STAR 结构。`
+  const summary = `整体质量${overallScore >= 80 ? '优秀' : overallScore >= 70 ? '良好' : '有待提升'}：${positionMatch ? `与「${position}」匹配度 ${positionMatch.score} 分，` : ''}主要短板为「${weakest[0].name}」与「${weakest[1].name}」，建议优先打磨项目经验的量化表达与 STAR 结构。`
 
-  return {
+  const result = {
     overallScore,
     radar,
     dimensions,
@@ -91,4 +129,7 @@ export function assessResume(resume) {
     summary,
     suggestions
   }
+  // 职业匹配度作为单独字段（突出展示）
+  if (positionMatch) result.positionMatch = positionMatch
+  return result
 }

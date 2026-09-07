@@ -1,16 +1,23 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCandidateAuthStore } from '@/stores/candidate'
+import { useCandidateAuthStore, useCandidateDataStore } from '@/stores/candidate'
 import { resumeAssessResults } from '@/mock/candidateData'
 import { api } from '@/api/client'
 import RadarChart from '@/components/RadarChart.vue'
 
 const router = useRouter()
 const auth = useCandidateAuthStore()
+const dataStore = useCandidateDataStore()
 
 const resumes = computed(() => auth.user?.resumes || [])
 const selectedId = ref(resumes.value[0]?.id || null)
+
+// 目标职业选择
+const positions = computed(() => dataStore.positions)
+const selectedPositionId = ref(positions.value[0]?.id || null)
+const selectedPosition = computed(() => positions.value.find(p => p.id === selectedPositionId.value))
+const selectedPositionTitle = computed(() => selectedPosition.value?.title || '')
 
 // 测评结果：优先用后端返回，离线时回退 mock
 const onlineResult = ref(null)
@@ -20,10 +27,10 @@ const result = computed(() => onlineResult.value || resumeAssessResults[selected
 const status = ref('idle')
 
 async function startAssess() {
-  if (status.value === 'loading') return
+  if (status.value === 'loading' || !selectedId.value) return
   status.value = 'loading'
   try {
-    const data = await api.post(`/c/resumes/${selectedId.value}/assess`, {})
+    const data = await api.post(`/c/resumes/${selectedId.value}/assess`, { position: selectedPositionTitle.value })
     onlineResult.value = data.result
   } catch {
     // 后端不可用 → mock 兜底
@@ -37,10 +44,23 @@ function switchResume() {
   status.value = 'idle'
   onlineResult.value = null
 }
+function switchPosition() {
+  status.value = 'idle'
+  onlineResult.value = null
+}
 
 function goEdit() {
   router.push('/c/resume/edit')
 }
+// 进入 AI 面试：携带所选职业跳转到练习配置页
+function goInterview() {
+  if (selectedPositionId.value) {
+    router.push(`/c/mock/config/${selectedPositionId.value}`)
+  } else {
+    router.push('/c/mock')
+  }
+}
+// 进入题库练习
 function goPractice() {
   router.push('/c/mock')
 }
@@ -52,14 +72,22 @@ function goPractice() {
     <div class="ra-head">
       <div class="ra-head-left">
         <h1 class="ra-title">📊 简历测评</h1>
-        <p class="ra-desc">AI 从 6 个维度给简历打分：岗位匹配度、内容完整性、结构清晰度、亮点呈现、STAR 完整度、关键词命中。</p>
+        <p class="ra-desc">选择目标职业与简历，AI 从 6 个维度打分并计算职业匹配度，测评完成可直接进入 AI 面试或题库练习。</p>
       </div>
       <div class="ra-head-right">
-        <label class="ra-select-label">选择简历</label>
-        <select v-model="selectedId" class="ra-select" :disabled="status === 'loading'" @change="switchResume">
-          <option v-for="r in resumes" :key="r.id" :value="r.id">{{ r.name }}{{ r.isDefault ? '（默认）' : '' }}</option>
-          <option v-if="!resumes.length" :value="null">暂无简历</option>
-        </select>
+        <div class="ra-select-group">
+          <label class="ra-select-label">目标职业</label>
+          <select v-model="selectedPositionId" class="ra-select" :disabled="status === 'loading'" @change="switchPosition">
+            <option v-for="p in positions" :key="p.id" :value="p.id">{{ p.title }}</option>
+          </select>
+        </div>
+        <div class="ra-select-group">
+          <label class="ra-select-label">选择简历</label>
+          <select v-model="selectedId" class="ra-select" :disabled="status === 'loading'" @change="switchResume">
+            <option v-for="r in resumes" :key="r.id" :value="r.id">{{ r.name }}{{ r.isDefault ? '（默认）' : '' }}</option>
+            <option v-if="!resumes.length" :value="null">暂无简历</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -76,8 +104,9 @@ function goPractice() {
       <div v-if="status === 'idle'" class="start-card">
         <div class="sc-icon">🤖</div>
         <h2>开始 AI 简历测评</h2>
+        <p>目标职业：<b>{{ selectedPositionTitle }}</b></p>
         <p>当前简历：<b>{{ resumes.find(r => r.id === selectedId)?.name }}</b></p>
-        <p class="sc-tip">AI 将解析简历内容，从 6 个维度生成评分、雷达图、关键词命中报告与改进清单。</p>
+        <p class="sc-tip">AI 将解析简历内容，从 6 个维度生成评分、职业匹配度、关键词命中报告与改进清单。</p>
         <button class="ra-btn primary lg" @click="startAssess">🚀 开始测评</button>
       </div>
 
@@ -87,8 +116,8 @@ function goPractice() {
         <h3>AI 正在解析简历...</h3>
         <div class="lc-steps">
           <div class="lc-step">✓ 提取文本与结构</div>
-          <div class="lc-step">✓ 匹配岗位关键词库</div>
-          <div class="lc-step">⏳ 计算 6 维评分</div>
+          <div class="lc-step">✓ 匹配「{{ selectedPositionTitle }}」关键词库</div>
+          <div class="lc-step">⏳ 计算 6 维评分与职业匹配度</div>
           <div class="lc-step dim">⏸ 生成改进清单</div>
         </div>
       </div>
@@ -105,6 +134,7 @@ function goPractice() {
                 {{ result.overallScore >= 80 ? '优秀' : result.overallScore >= 70 ? '良好' : '待提升' }}
               </span>
               <span class="sh-resume">{{ resumes.find(r => r.id === selectedId)?.name }}</span>
+              <span v-if="selectedPositionTitle" class="sh-pos">🎯 {{ selectedPositionTitle }}</span>
             </div>
           </div>
           <div class="sh-right">
@@ -112,6 +142,23 @@ function goPractice() {
             <div class="sh-stat"><span>命中关键词</span><b>{{ result.keywords.hit.length }} 个</b></div>
             <div class="sh-stat"><span>缺失关键词</span><b>{{ result.keywords.miss.length }} 个</b></div>
           </div>
+        </div>
+
+        <!-- 职业匹配度（突出展示） -->
+        <div v-if="result.positionMatch" class="pm-card">
+          <div class="pm-left">
+            <div class="pm-label">职业匹配度</div>
+            <div class="pm-position">{{ result.positionMatch.position }}</div>
+          </div>
+          <div class="pm-score-wrap">
+            <div class="pm-score" :class="result.positionMatch.score >= 80 ? 'good' : result.positionMatch.score >= 60 ? 'mid' : 'low'">
+              {{ result.positionMatch.score }}
+            </div>
+            <div class="pm-bar">
+              <div class="pm-bar-inner" :style="{ width: result.positionMatch.score + '%' }"></div>
+            </div>
+          </div>
+          <div class="pm-comment">{{ result.positionMatch.comment }}</div>
         </div>
 
         <!-- AI 综合评语 -->
@@ -185,11 +232,12 @@ function goPractice() {
           </div>
         </div>
 
-        <!-- 底部操作 -->
+        <!-- 底部操作：重新测评 / 改简历 / AI 面试 / 题库练习 -->
         <div class="actions">
-          <button class="act-btn ghost" @click="status = 'idle'">重新测评</button>
-          <button class="act-btn ghost" @click="goEdit">✍️ 去 AI 改简历</button>
-          <button class="act-btn primary" @click="goPractice">🎯 去 AI 面试</button>
+          <button class="act-btn ghost" @click="status = 'idle'">🔄 重新测评</button>
+          <button class="act-btn ghost" @click="goEdit">✍️ AI 改简历</button>
+          <button class="act-btn interview" @click="goInterview">🎤 进入 AI 面试</button>
+          <button class="act-btn primary" @click="goPractice">📚 进入题库练习</button>
         </div>
       </template>
     </template>
@@ -203,7 +251,8 @@ function goPractice() {
 .ra-head-left { flex: 1; min-width: 280px; }
 .ra-title { font-size: 22px; font-weight: 700; color: #1f2937; margin: 0 0 6px 0; }
 .ra-desc { font-size: 13px; color: #6b7280; line-height: 1.6; margin: 0; }
-.ra-head-right { display: flex; flex-direction: column; gap: 6px; }
+.ra-head-right { display: flex; flex-direction: column; gap: 10px; }
+.ra-select-group { display: flex; flex-direction: column; gap: 6px; }
 .ra-select-label { font-size: 12px; color: #6b7280; }
 .ra-select {
   height: 40px; padding: 0 14px; border: 1px solid #e5e7eb; border-radius: 10px;
@@ -253,16 +302,35 @@ function goPractice() {
 }
 .sh-label { font-size: 13px; opacity: .9; margin-bottom: 4px; }
 .sh-score { font-size: 56px; font-weight: 700; line-height: 1; margin-bottom: 12px; }
-.sh-tag-wrap { display: flex; align-items: center; gap: 10px; }
+.sh-tag-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sh-tag { padding: 4px 12px; background: rgba(255,255,255,.2); border-radius: 999px; font-size: 12px; font-weight: 600; }
 .sh-tag.good { background: #d1fae5; color: #059669; }
 .sh-tag.mid { background: #dbeafe; color: #2563eb; }
 .sh-tag.low { background: #fee2e2; color: #dc2626; }
 .sh-resume { font-size: 13px; opacity: .9; }
+.sh-pos { font-size: 13px; opacity: .9; background: rgba(255,255,255,.15); padding: 4px 10px; border-radius: 999px; }
 .sh-right { display: flex; flex-direction: column; gap: 8px; }
 .sh-stat { display: flex; gap: 12px; align-items: center; font-size: 14px; }
 .sh-stat span { opacity: .85; }
 .sh-stat b { font-weight: 700; }
+
+/* 职业匹配度卡片 */
+.pm-card {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border: 1px solid #a7f3d0; border-radius: 16px; padding: 24px;
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.pm-left { flex-shrink: 0; }
+.pm-label { font-size: 12px; color: #059669; font-weight: 600; margin-bottom: 4px; }
+.pm-position { font-size: 20px; font-weight: 700; color: #065f46; }
+.pm-score-wrap { display: flex; flex-direction: column; gap: 8px; min-width: 200px; flex: 1; }
+.pm-score { font-size: 36px; font-weight: 700; line-height: 1; }
+.pm-score.good { color: #059669; }
+.pm-score.mid { color: #d97706; }
+.pm-score.low { color: #dc2626; }
+.pm-bar { height: 10px; background: #d1fae5; border-radius: 5px; overflow: hidden; }
+.pm-bar-inner { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #10b981, #059669); transition: width .8s; }
+.pm-comment { font-size: 13px; color: #047857; line-height: 1.6; flex: 1; min-width: 240px; }
 
 .card { background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
 .card-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 16px; }
@@ -307,10 +375,12 @@ function goPractice() {
 .sug-text { margin: 0; font-size: 13px; color: #78350f; line-height: 1.6; }
 
 /* 操作按钮 */
-.actions { display: flex; gap: 12px; justify-content: center; padding: 12px 0; }
+.actions { display: flex; gap: 12px; justify-content: center; padding: 12px 0; flex-wrap: wrap; }
 .act-btn { height: 44px; padding: 0 28px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; }
 .act-btn.ghost { border: 1px solid #e5e7eb; background: #fff; color: #6b7280; }
 .act-btn.ghost:hover { background: #f9fafb; }
+.act-btn.interview { border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
+.act-btn.interview:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,158,11,.3); }
 .act-btn.primary { border: none; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; }
 .act-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,.3); }
 
